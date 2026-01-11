@@ -2,13 +2,19 @@
 __pycache__/
 *.py[cod]
 .Python
-cd ~/Desktop/MangaColorization_old
-
-# 1. 创建 .gitignore（如果没有）
-cat > .gitignore << 'EOF'
-__pycache__/
-.ipynb_checkpoints/
+# 大文件 - 不要上传到 GitHub
 data/
 checkpoints/
+experiments/*/checkpoints/
 *.pth
+*.pkl
+
+# 但保留实验结果图片和CSV
+!experiments/*.png
+!experiments/*.csv
+!experiments/*/*.png
+!experiments/*/*.csv
+
+# OS
 .DS_Store
+Thumbs.db
