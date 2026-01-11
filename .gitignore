@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.Python
+cd ~/Desktop/MangaColorization_old
+
+# 1. 创建 .gitignore（如果没有）
+cat > .gitignore << 'EOF'
+__pycache__/
+.ipynb_checkpoints/
+data/
+checkpoints/
+*.pth
+.DS_Store
