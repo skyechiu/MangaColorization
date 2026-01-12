@@ -1,146 +1,79 @@
-# Pix2Pix-Manga: Automatic Comic Colorization
+# Pix2Pix Manga Colorization
 
-**Student:** Skye Chiu (s5820249)
+**Student:** Skye Chiu (s5820249)  
+**Assignment:** ML Programming (NCCA)
 
-## Project Summary
+## What This Does
 
-This project implements a Pix2Pix-style conditional GAN for automatic manga
-colorization. The system takes a grayscale manga image as input and generates a
-plausible RGB colorization.
+Takes grayscale manga pages and colorizes them automatically using a Pix2Pix GAN. The goal isn't to perfectly match the original colors (since we don't know them), but to produce something that looks reasonable and could be used as a starting point for manual coloring.
 
-The goal is not to reproduce the original artist’s colors, but to produce
-structurally consistent and visually coherent results that can serve as a
-starting point for manual refinement.
+## Architecture
 
----
+**Generator:** U-Net with skip connections - preserves line art details  
+**Discriminator:** 70×70 PatchGAN - focuses on local texture consistency  
+**Loss:** Adversarial + L1 reconstruction (weighted 1:100)
 
-## Method
-
-- **Generator:** U-Net with skip connections  
-- **Discriminator:** 70×70 PatchGAN  
-- **Loss:** L1 + adversarial loss (100:1 ratio)
-
-This configuration preserves line art while avoiding desaturated outputs and
-remains stable enough to train from scratch within coursework constraints.
-
----
+This setup is stable enough to train from scratch and doesn't produce the desaturated outputs you get with pure regression.
 
 ## Data
 
-- Public anime/manga illustration datasets (mainly Danbooru)
-- ~1,000–1,500 color images
-- Paired data created by converting color images to grayscale
+* Source: Danbooru (public anime/manga illustrations)
+* Size: ~1000 color images
+* Paired data: Created by converting color → grayscale
+* Preprocessing: Resize to 256×256, normalize to [-1,1], light Gaussian blur to reduce screentone noise
 
-**Preprocessing**
-- Resize to 256×256
-- Normalize to [-1, 1]
-- Light Gaussian blur to reduce screentone artefacts
+**Augmentation:**
+* Horizontal flip
+* Small rotations (±15°)
+* Mild color/brightness variation
 
-**Augmentation**
-- Horizontal flip
-- Small rotations (±15°)
-- Mild color and brightness variation
+## Training
 
----
+* Optimizer: Adam (lr=2e-4, β=(0.5, 0.999))
+* Batch size: 16 (32 caused OOM on 8GB VRAM)
+* Epochs: 50
+* Hardware: Single GTX 1080
 
-## Training Setup
-
-- Optimizer: Adam (lr=2e-4, betas=0.5, 0.999)
-- Batch size: 16
-- Epochs: 50
-- Hardware: Single GPU (8GB VRAM)
-
-L1 loss weight was increased from 50 to 100 to reduce color bleeding across line
-boundaries.
-
----
+I increased L1 weight from 50 to 100 to reduce color bleeding across line boundaries.
 
 ## Evaluation
 
-**Metrics**
-- SSIM (structural similarity)
-- PSNR (pixel-level accuracy)
+Used SSIM (~0.75 on validation) and PSNR as rough guidelines, but visual inspection was more important. Some lower-metric outputs actually looked better perceptually.
 
-Metrics were used as guidance only. Visual inspection was necessary, as some
-lower-metric outputs appeared perceptually better.
+## Problems I Ran Into
 
-**Best configuration**
-- L1 + adversarial loss with skip connections  
-- SSIM ~0.75 on validation data
+**GAN collapse around epoch 15-20:** Discriminator learned too fast and generator got stuck. Fixed by lowering discriminator lr to 1e-4.
 
----
+**Slow training:** Original code did grayscale conversion on-the-fly which was killing performance. Pre-cached grayscale images and epoch time dropped by about 30%.
 
-## Key Implementation Challenges
+**Color bleeding:** Early models had colors leak across edges. Increasing L1 weight helped enforce spatial consistency.
 
-**GAN instability (epochs 15–20)**  
-Discriminator learned too quickly → generator collapsed.  
-Fix: reduced discriminator learning rate (2e-4 → 1e-4).
+**Memory issues:** Batch size 32 didn't fit in 8GB VRAM. Dropped to 16 with no quality loss.
 
-**Slow data loading**  
-On-the-fly grayscale conversion caused major slowdown.  
-Fix: preprocessed and cached grayscale images. Epoch time dropped ~30%.
+## Code Standards
 
-**Color bleeding**  
-Colors leaked across edges in early models.  
-Fix: increased L1 weight to enforce spatial consistency.
+This follows NCCA Python coding standards (PEP 8 style):
+* 4-space indentation
+* Max line length 88 (black/ruff default)
+* Imports sorted: stdlib / third-party / local
+* Functions/variables: `snake_case`
+* Classes: `CamelCase`
 
-**Memory limits**  
-Batch size 32 caused OOM on 8GB VRAM.  
-Fix: batch size 16 with no performance loss.
-
----
-
-## Engineering Practices (Python Coding Standards)
-
-This project follows **PEP 8** and the unit Python coding standards.
-
-### Style and Layout
-- 4 spaces indentation (no tabs)
-- Max line length: **88**
-- Imports grouped as: standard library / third-party / local (blank line between)
-- Naming:
-  - functions/variables: `lowercase_with_underscores`
-  - classes: `CamelCase`
-  - constants: `ALL_CAPS`
-  - internal helpers: `_leading_underscore`
-- Use `is None` / `is not None`, avoid `== None`
-- Avoid wildcard imports (`from x import *`)
-
-### Tooling
-- **ruff** for linting + formatting (preferred)
-- **isort** import sorting (via ruff import rules)
-- Project dependencies managed with **uv** (`pyproject.toml` + `uv.lock`)
-
-### Pre-commit
-A pre-commit hook is used to ensure formatting and import order before commits.
-
-See `.pre-commit-config.yaml` for:
-- `ruff-check` (with import sorting fixes)
-- `ruff-format`
-
-`# noqa` is only used when necessary and should be documented inline.
+Dependencies managed with `uv` (see `pyproject.toml`). Pre-commit hooks run ruff for formatting and linting.
 
 ## Ethics
 
-- Public datasets used for educational purposes only
-- No real people or personal data involved
-- Outputs clearly marked as AI-generated
-- Model not released or used commercially
+* Used public datasets for educational purposes only
+* No personal data or identifiable people
+* Outputs marked as AI-generated
+* Not intended for commercial use
 
----
+## What I Learned
 
-## Lessons Learned
-
-- GAN training stability depends more on balance than architecture
-- Visual inspection is essential alongside metrics
-- Data preprocessing quality matters more than dataset size
-- Debugging always takes longer than expected
-
----
+Getting the discriminator/generator balance right was way more important than I expected - small LR changes had huge effects. Also learned that metrics don't always correlate with visual quality for colorization, and that data preprocessing quality matters more than just having a huge dataset. Oh and debugging GAN training takes forever.
 
 ## References
 
-- Isola et al., *Image-to-Image Translation with Conditional Adversarial Networks*
-- Ronneberger et al., *U-Net*
-- PyTorch Documentation
-- Danbooru Dataset
+* Isola et al. (2017). Image-to-Image Translation with Conditional Adversarial Networks. CVPR.
+* Ronneberger et al. (2015). U-Net: Convolutional Networks for Biomedical Image Segmentation. MICCAI.
+* Danbooru Dataset: https://danbooru.donmai.us/
